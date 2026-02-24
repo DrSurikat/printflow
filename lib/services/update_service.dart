@@ -20,7 +20,7 @@ class UpdateInfo {
 
 class UpdateService {
   // Replace with your actual GitHub owner/repo
-  static const _owner = 'your-github-username';
+  static const _owner = 'DrSurikat';
   static const _repo = 'printflow';
 
   static Future<UpdateInfo?> check() async {
