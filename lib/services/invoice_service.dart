@@ -8,7 +8,6 @@ import '../models/client.dart';
 import '../models/order.dart';
 
 class InvoiceService {
-  /// Generates and shows a PDF invoice for the given order.
   static Future<void> showInvoice({
     required Order order,
     Client? client,
@@ -26,14 +25,27 @@ class InvoiceService {
     Client? client,
     AppSettings settings,
   ) async {
-    final doc = pw.Document();
+    // ── Load Cyrillic-compatible fonts from Google Fonts ──────────────
+    final fontRegular = await PdfGoogleFonts.robotoRegular();
+    final fontBold = await PdfGoogleFonts.robotoBold();
+    final fontMedium = await PdfGoogleFonts.robotoMedium();
+    final fontItalic = await PdfGoogleFonts.robotoItalic();
+
+    final doc = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: fontRegular,
+        bold: fontBold,
+        italic: fontItalic,
+        boldItalic: fontItalic,
+      ),
+    );
+
     final currency =
         NumberFormat.currency(locale: 'uk_UA', symbol: '₴', decimalDigits: 2);
     final dateFmt = DateFormat('dd.MM.yyyy');
 
-    // Colour palette
     const primary = PdfColor.fromInt(0xFF6C63FF);
-    const textMuted = PdfColor.fromInt(0xFF555566);
+    const textMuted = PdfColor.fromInt(0xFF666677);
     const borderColor = PdfColor.fromInt(0xFFDDDDEE);
 
     final invoiceNumber =
@@ -44,11 +56,12 @@ class InvoiceService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 48, vertical: 40),
         build: (context) => [
-          // ── Header ──────────────────────────────────────
+          // ── Header ────────────────────────────────────────────────────
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
+              // Sender info (left)
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
@@ -57,46 +70,43 @@ class InvoiceService {
                         ? settings.senderName
                         : 'PrintFlow',
                     style: pw.TextStyle(
+                      font: fontBold,
                       fontSize: 20,
-                      fontWeight: pw.FontWeight.bold,
                       color: primary,
                     ),
                   ),
                   if (settings.senderAddress.isNotEmpty)
                     pw.Text(settings.senderAddress,
-                        style:
-                            const pw.TextStyle(fontSize: 9, color: textMuted)),
+                        style: pw.TextStyle(
+                            font: fontRegular, fontSize: 9, color: textMuted)),
                   if (settings.senderPhone.isNotEmpty)
                     pw.Text(settings.senderPhone,
-                        style:
-                            const pw.TextStyle(fontSize: 9, color: textMuted)),
+                        style: pw.TextStyle(
+                            font: fontRegular, fontSize: 9, color: textMuted)),
                   if (settings.senderIpn.isNotEmpty)
                     pw.Text('ІПН: ${settings.senderIpn}',
-                        style:
-                            const pw.TextStyle(fontSize: 9, color: textMuted)),
+                        style: pw.TextStyle(
+                            font: fontRegular, fontSize: 9, color: textMuted)),
                 ],
               ),
+              // Invoice title (right)
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
                   pw.Text(
                     'РАХУНОК НА ОПЛАТУ',
-                    style: pw.TextStyle(
-                      fontSize: 16,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
+                    style: pw.TextStyle(font: fontBold, fontSize: 16),
                   ),
                   pw.Text(invoiceNumber,
                       style: pw.TextStyle(
-                          fontSize: 13,
-                          color: primary,
-                          fontWeight: pw.FontWeight.bold)),
+                          font: fontBold, fontSize: 13, color: primary)),
                   pw.Text('Дата: ${dateFmt.format(order.createdAt)}',
-                      style: const pw.TextStyle(fontSize: 9, color: textMuted)),
+                      style: pw.TextStyle(
+                          font: fontRegular, fontSize: 9, color: textMuted)),
                   if (order.deadline != null)
                     pw.Text('Термін оплати: ${dateFmt.format(order.deadline!)}',
-                        style:
-                            const pw.TextStyle(fontSize: 9, color: textMuted)),
+                        style: pw.TextStyle(
+                            font: fontRegular, fontSize: 9, color: textMuted)),
                 ],
               ),
             ],
@@ -105,95 +115,105 @@ class InvoiceService {
           pw.Divider(color: borderColor),
           pw.SizedBox(height: 12),
 
-          // ── Client info ──────────────────────────────
+          // ── Client ────────────────────────────────────────────────────
           pw.Text('Платник:',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              style: pw.TextStyle(font: fontBold, fontSize: 11)),
           pw.SizedBox(height: 4),
           pw.Text(
             client != null
-                ? '${client.name}${client.company.isNotEmpty ? ' (${client.company})' : ''}'
+                ? '${client.name}'
+                    '${client.company.isNotEmpty ? ' (${client.company})' : ''}'
                 : order.clientName,
-            style: const pw.TextStyle(fontSize: 11),
+            style: pw.TextStyle(font: fontMedium, fontSize: 11),
           ),
           if (client != null && client.address.isNotEmpty)
             pw.Text(client.address,
-                style: const pw.TextStyle(fontSize: 10, color: textMuted)),
+                style: pw.TextStyle(
+                    font: fontRegular, fontSize: 10, color: textMuted)),
           if (client != null && client.phone.isNotEmpty)
             pw.Text(client.phone,
-                style: const pw.TextStyle(fontSize: 10, color: textMuted)),
+                style: pw.TextStyle(
+                    font: fontRegular, fontSize: 10, color: textMuted)),
           pw.SizedBox(height: 16),
 
-          // ── Items table ─────────────────────────────
+          // ── Items table ───────────────────────────────────────────────
           pw.Table(
             border: pw.TableBorder.all(color: borderColor, width: 0.5),
             columnWidths: {
               0: const pw.FlexColumnWidth(4),
               1: const pw.FixedColumnWidth(50),
-              2: const pw.FixedColumnWidth(60),
+              2: const pw.FixedColumnWidth(70),
               3: const pw.FixedColumnWidth(30),
-              4: const pw.FixedColumnWidth(75),
+              4: const pw.FixedColumnWidth(80),
             },
             children: [
               // Header row
               pw.TableRow(
                 decoration: const pw.BoxDecoration(color: primary),
                 children: [
-                  _cell('Найменування', isHeader: true),
-                  _cell('К-ть', isHeader: true),
-                  _cell('Ціна', isHeader: true),
-                  _cell('Од.', isHeader: true),
-                  _cell('Сума', isHeader: true),
+                  _cell('Найменування', font: fontBold, isHeader: true),
+                  _cell('К-ть', font: fontBold, isHeader: true),
+                  _cell('Ціна', font: fontBold, isHeader: true),
+                  _cell('Од.', font: fontBold, isHeader: true),
+                  _cell('Сума', font: fontBold, isHeader: true),
                 ],
               ),
               // Data rows
               for (final item in order.items)
                 pw.TableRow(children: [
-                  _cell(item.name),
-                  _cell('${item.quantity}'),
-                  _cell(currency.format(item.unitPrice)),
-                  _cell(item.unit ?? 'шт'),
-                  _cell(currency.format(item.totalPrice)),
+                  _cell(item.name, font: fontRegular),
+                  _cell('${item.quantity}', font: fontRegular),
+                  _cell(currency.format(item.unitPrice), font: fontRegular),
+                  _cell(item.unit ?? 'шт', font: fontRegular),
+                  _cell(currency.format(item.totalPrice), font: fontMedium),
                 ]),
             ],
           ),
           pw.SizedBox(height: 8),
 
-          // ── Totals ──────────────────────────────────
+          // ── Totals ────────────────────────────────────────────────────
           pw.Align(
             alignment: pw.Alignment.centerRight,
-            child: pw.Container(
-              width: 220,
+            child: pw.SizedBox(
+              width: 240,
               child: pw.Column(children: [
-                _totalRow('Підсумок:', currency.format(order.subtotal)),
+                _totalRow('Підсумок:', currency.format(order.subtotal),
+                    regular: fontRegular, bold: fontBold),
                 if (order.discount != null && order.discount! > 0)
                   _totalRow(
                     'Знижка ${order.discount!.toStringAsFixed(0)}%:',
                     '- ${currency.format(order.discountAmount)}',
+                    regular: fontRegular,
+                    bold: fontBold,
                   ),
                 pw.Divider(color: borderColor),
                 _totalRow(
                   'До сплати:',
                   currency.format(order.total),
+                  regular: fontBold,
+                  bold: fontBold,
                   isBold: true,
                   color: primary,
                 ),
               ]),
             ),
           ),
-          pw.SizedBox(height: 24),
+          pw.SizedBox(height: 16),
 
-          // ── Payment method ───────────────────────────
+          // ── Payment method ────────────────────────────────────────────
           if (order.paymentMethod != null && order.paymentMethod!.isNotEmpty)
             pw.Text('Спосіб оплати: ${order.paymentMethod!}',
-                style: const pw.TextStyle(fontSize: 10, color: textMuted)),
+                style: pw.TextStyle(
+                    font: fontRegular, fontSize: 10, color: textMuted)),
 
-          // ── Footer ──────────────────────────────────
+          // ── Footer ────────────────────────────────────────────────────
           if (settings.invoiceFooterText.isNotEmpty) ...[
             pw.SizedBox(height: 16),
             pw.Divider(color: borderColor),
             pw.SizedBox(height: 6),
             pw.Text(settings.invoiceFooterText,
-                style: const pw.TextStyle(fontSize: 9, color: textMuted)),
+                style: pw.TextStyle(
+                    font: fontRegular, fontSize: 9, color: textMuted)),
           ],
         ],
       ),
@@ -202,35 +222,40 @@ class InvoiceService {
     return doc.save();
   }
 
-  static pw.Widget _cell(String text, {bool isHeader = false}) {
+  static pw.Widget _cell(
+    String text, {
+    required pw.Font font,
+    bool isHeader = false,
+  }) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       child: pw.Text(
         text,
         style: pw.TextStyle(
+          font: font,
           fontSize: isHeader ? 9 : 10,
-          fontWeight: isHeader ? pw.FontWeight.bold : null,
           color: isHeader ? PdfColors.white : null,
         ),
       ),
     );
   }
 
-  static pw.Widget _totalRow(String label, String value,
-      {bool isBold = false, PdfColor? color}) {
+  static pw.Widget _totalRow(
+    String label,
+    String value, {
+    required pw.Font regular,
+    required pw.Font bold,
+    bool isBold = false,
+    PdfColor? color,
+  }) {
+    final font = isBold ? bold : regular;
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
         pw.Text(label,
-            style: pw.TextStyle(
-                fontSize: 10,
-                fontWeight: isBold ? pw.FontWeight.bold : null,
-                color: color)),
+            style: pw.TextStyle(font: font, fontSize: 10, color: color)),
         pw.Text(value,
-            style: pw.TextStyle(
-                fontSize: 10,
-                fontWeight: isBold ? pw.FontWeight.bold : null,
-                color: color)),
+            style: pw.TextStyle(font: font, fontSize: 10, color: color)),
       ],
     );
   }
